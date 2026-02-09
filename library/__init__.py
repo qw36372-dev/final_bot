@@ -33,6 +33,12 @@ from .library import (
 # Middlewares
 from .middlewares import AntiSpamMiddleware, ErrorHandlerMiddleware
 
+# PDF сертификаты
+from .certificates import generate_certificate
+
+# Статистика
+from .stats import stats_manager
+
 __all__ = [
     # Enum и модели
     "Difficulty",
@@ -62,4 +68,8 @@ __all__ = [
     # Middlewares
     "AntiSpamMiddleware",
     "ErrorHandlerMiddleware",
+    
+    # PDF и статистика
+    "generate_certificate",
+    "stats_manager",
 ]
