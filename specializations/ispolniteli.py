@@ -33,7 +33,14 @@ ispolniteli_router = Router(name="ispolniteli")
 @ispolniteli_router.callback_query(F.data == "spec_ispolniteli")
 async def select_ispolniteli(callback: CallbackQuery, state: FSMContext):
     """Выбор специализации Исполнительное производство → запрос ФИО."""
-    await callback.message.edit_text(
+    # Удаляем предыдущее сообщение (с логотипом или без)
+    try:
+        await callback.message.delete()
+    except Exception:
+        pass
+    
+    # Отправляем НОВОЕ сообщение
+    await callback.message.answer(
         "📊 <b>Исполнительное производство</b>\n\nВведите ваше ФИО:"
     )
     await state.set_state(TestStates.waiting_full_name)
@@ -110,7 +117,6 @@ async def select_difficulty(callback: CallbackQuery, state: FSMContext):
         await timer.start()
         test_state.timer_task = timer
         
-        # ✅ ИСПРАВЛЕНО: только user_id
         await stats_manager.update_user_activity(callback.from_user.id)
         
         await state.update_data(test_state=test_state)
