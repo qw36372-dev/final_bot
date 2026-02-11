@@ -36,6 +36,7 @@ class CurrentTestState(BaseModel):
     answers_history: Dict[int, Set[int]] = Field(default_factory=dict)  # {question_idx: {selected}}
     start_time: float = Field(default_factory=time.time)
     timer_task: Optional[object] = None  # asyncio.Task
+    last_message_id: Optional[int] = None  # ID последнего сообщения с вопросом
     
     # Данные пользователя
     full_name: str = ""

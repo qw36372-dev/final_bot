@@ -61,15 +61,24 @@ async def show_question(
     # Клавиатура - ТОЛЬКО эмодзи
     keyboard = get_test_keyboard(len(question.options), test_state.selected_answers)
     
-    # Отправка/редактирование сообщения
-    if isinstance(callback, CallbackQuery):
+    # Удаляем предыдущее сообщение с вопросом (если есть)
+    if test_state.last_message_id:
         try:
-            await callback.message.edit_text(full_text, reply_markup=keyboard)
+            if isinstance(callback, CallbackQuery):
+                await callback.bot.delete_message(
+                    chat_id=callback.message.chat.id,
+                    message_id=test_state.last_message_id
+                )
         except Exception as e:
-            logger.warning(f"⚠️ Не удалось отредактировать сообщение: {e}")
-            await callback.message.answer(full_text, reply_markup=keyboard)
+            logger.debug(f"Не удалось удалить предыдущее сообщение: {e}")
+    
+    # Отправляем НОВОЕ сообщение с вопросом
+    if isinstance(callback, CallbackQuery):
+        msg = await callback.message.answer(full_text, reply_markup=keyboard)
+        test_state.last_message_id = msg.message_id  # Сохраняем ID
     else:
-        await callback.answer(full_text, reply_markup=keyboard)
+        msg = await callback.answer(full_text, reply_markup=keyboard)
+        test_state.last_message_id = msg.message_id  # Сохраняем ID
 
 
 async def handle_answer_toggle(
@@ -103,8 +112,29 @@ async def handle_answer_toggle(
             test_state.selected_answers.add(answer_num)
             logger.debug(f"➕ Добавлен ответ {answer_num}")
         
-        # Обновляем ПОЛНОСТЬЮ сообщение (текст + клавиатуру)
-        await show_question(callback, test_state)
+        # Обновляем ТЕКУЩЕЕ сообщение (только клавиатуру + текст с галочками)
+        question = test_state.questions[test_state.current_index]
+        timer_text = test_state.timer_task.remaining_time() if test_state.timer_task else "∞"
+        
+        header = (
+            f"⏰ Осталось: <b>{timer_text}</b>\n\n"
+            f"📝 <b>Вопрос {test_state.current_index + 1}/{len(test_state.questions)}</b>"
+        )
+        question_text = f"\n\n{question.question}\n\n"
+        options_text = "<b>Варианты ответов:</b>\n"
+        for i, option in enumerate(question.options, start=1):
+            emoji = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣"][i-1] if i <= 6 else f"{i}️⃣"
+            mark = "✅ " if i in test_state.selected_answers else ""
+            options_text += f"{mark}{emoji} {option}\n"
+        
+        full_text = header + question_text + options_text
+        keyboard = get_test_keyboard(len(question.options), test_state.selected_answers)
+        
+        try:
+            await callback.message.edit_text(full_text, reply_markup=keyboard)
+        except Exception as e:
+            logger.warning(f"⚠️ Не удалось обновить: {e}")
+        
         await callback.answer()
         
         # Сохраняем состояние

@@ -1,7 +1,8 @@
 """
 Генерация PDF сертификатов о прохождении теста.
-Production-ready с ReportLab и поддержкой русских шрифтов.
+Production-ready с встроенными шрифтами.
 """
+import io
 import logging
 from pathlib import Path
 from datetime import datetime
@@ -17,29 +18,36 @@ from .models import CurrentTestState
 
 logger = logging.getLogger(__name__)
 
+# Загрузка встроенного шрифта
+FONT_PATH = Path(__file__).parent / "fonts" / "DejaVuSans.ttf"
 
 def register_fonts():
     """Регистрация русских шрифтов для PDF."""
     try:
-        pdfmetrics.registerFont(TTFont('DejaVu', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'))
-        pdfmetrics.registerFont(TTFont('DejaVu-Bold', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'))
-        logger.info("✅ Шрифты DejaVu загружены")
-        return 'DejaVu', 'DejaVu-Bold'
-    except:
-        logger.warning("⚠️ Русские шрифты не найдены, используется Helvetica")
+        if FONT_PATH.exists():
+            pdfmetrics.registerFont(TTFont('DejaVu', str(FONT_PATH)))
+            logger.info(f"✅ Шрифт загружен: {FONT_PATH}")
+            return 'DejaVu', 'DejaVu'
+        else:
+            logger.warning(f"⚠️ Шрифт не найден: {FONT_PATH}, используется Helvetica")
+            return 'Helvetica', 'Helvetica-Bold'
+    except Exception as e:
+        logger.error(f"❌ Ошибка загрузки шрифта: {e}")
         return 'Helvetica', 'Helvetica-Bold'
 
 
-async def generate_certificate(test_state: CurrentTestState, user_id: int) -> Path:
-    """Генерирует PDF сертификат."""
-    settings.certs_dir.mkdir(parents=True, exist_ok=True)
+async def generate_certificate(test_state: CurrentTestState, user_id: int) -> io.BytesIO:
+    """
+    Генерирует PDF сертификат и возвращает BytesIO buffer.
     
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = settings.certs_dir / f"cert_{user_id}_{timestamp}.pdf"
-    
+    Returns:
+        io.BytesIO: PDF в памяти
+    """
     font_regular, font_bold = register_fonts()
     
-    c = canvas.Canvas(str(filename), pagesize=A4)
+    # Создаём PDF в памяти
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
     
     # Заголовок
@@ -82,5 +90,8 @@ async def generate_certificate(test_state: CurrentTestState, user_id: int) -> Pa
     c.drawCentredString(width / 2, 50, f"Telegram Bot • ID: {user_id}")
     
     c.save()
-    logger.info(f"✅ Сертификат: {filename}")
-    return filename
+    
+    # Возвращаем buffer с позицией в начале
+    buffer.seek(0)
+    logger.info(f"✅ Сертификат сгенерирован для пользователя {user_id}")
+    return buffer
