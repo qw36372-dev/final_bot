@@ -13,7 +13,7 @@ from aiogram import Bot, Dispatcher, Router, F
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import Message, CallbackQuery, FSInputFile, BotCommand
+from aiogram.types import Message, CallbackQuery, BotCommand
 from aiogram.filters import Command
 
 from config.settings import settings
@@ -132,29 +132,14 @@ async def main():
     
     @main_router.message(Command("start"))
     async def cmd_start(message: Message):
-        """Команда /start - главное меню с логотипом (если есть)."""
-        # Проверяем наличие логотипа
-        logo_path = Path("assets/logo.png")
-        
+        """Команда /start - главное меню."""
         text = (
             "🧪 <b>ФССП Тест-бот</b>\n\n"
             "Добро пожаловать в систему тестирования сотрудников ФССП!\n\n"
             "Выберите специализацию для прохождения теста:"
         )
         
-        if logo_path.exists():
-            try:
-                photo = FSInputFile(logo_path)
-                await message.answer_photo(
-                    photo,
-                    caption=text,
-                    reply_markup=get_main_keyboard()
-                )
-            except Exception as e:
-                logger.warning(f"⚠️ Не удалось отправить логотип: {e}")
-                await message.answer(text, reply_markup=get_main_keyboard())
-        else:
-            await message.answer(text, reply_markup=get_main_keyboard())
+        await message.answer(text, reply_markup=get_main_keyboard())
     
     @main_router.message(Command("stats"))
     async def cmd_stats(message: Message):
